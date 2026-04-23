@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI SaaS Builder</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+<style>
+:root {
+  --bg: #0b0f19;
+  --panel: #111827;
+  --text: white;
+  --card: #1f2937;
+}
+
+.light {
+  --bg: #f3f4f6;
+  --panel: white;
+  --text: black;
+  --card: #e5e7eb;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  height: 100vh;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 260px;
+  background: var(--panel);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.logo {
+  font-weight: bold;
+  color: #38bdf8;
+  margin-bottom: 10px;
+}
+
+.item {
+  padding: 8px;
+  background: var(--card);
+  margin-bottom: 5px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* MAIN */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  padding: 10px;
+  background: var(--panel);
+  display: flex;
+  justify-content: space-between;
+}
+
+.chat {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto;
+}
+
+.message {
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  max-width: 80%;
+}
+
+.user { background: #2563eb; margin-left: auto; }
+.ai { background: var(--card); }
+
+.input {
+  display: flex;
+  padding: 10px;
+  background: var(--panel);
+}
+
+input {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+}
+
+button {
+  margin-left: 8px;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  background: #38bdf8;
+  cursor: pointer;
+}
+
+/* ADMIN PANEL */
+.admin {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 300px;
+  height: 100%;
+  background: var(--panel);
+  padding: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="logo">AI Builder</div>
+  <div id="history"></div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <div class="topbar">
+    <div>
+      <button onclick="toggleTheme()">🌙/☀</button>
+      <button onclick="toggleAdmin()">Admin</button>
+    </div>
+    <div>AI SaaS Builder</div>
+  </div>
+
+  <div class="chat" id="chat"></div>
+
+  <div class="input">
+    <input id="prompt" placeholder="Build an app..." />
+    <button onclick="generate()">Go</button>
+  </div>
+
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="admin" id="adminPanel">
+  <h3>Admin Dashboard</h3>
+  <p>Users: (future Supabase Auth)</p>
+  <p>Projects stored in DB</p>
+</div>
+
+<script>
+
+const FUNCTION_URL = "https://jzyejyyismmglrsqvhsr.supabase.co/functions/v1/swift-action";
+
+const SUPABASE_URL = "https://jzyejyyismmglrsqvhsr.supabase.co";
+const SUPABASE_KEY = "YOUR_ANON_KEY";
+
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// CHAT
+function addMessage(text, type) {
+  const div = document.createElement("div");
+  div.className = "message " + type;
+  div.innerText = text;
+  document.getElementById("chat").appendChild(div);
+}
+
+// HISTORY
+async function loadHistory() {
+  const { data } = await client
+    .from("ai_projects")
+    .select("*")
+    .order("id", { ascending: false });
+
+  const box = document.getElementById("history");
+  box.innerHTML = "";
+
+  data?.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerText = item.prompt;
+
+    div.onclick = () => {
+      addMessage(item.prompt, "user");
+      addMessage(item.result, "ai");
+    };
+
+    box.appendChild(div);
+  });
+}
+
+// AI CALL
+async function generate() {
+  const prompt = document.getElementById("prompt").value;
+  if (!prompt) return;
+
+  addMessage(prompt, "user");
+  addMessage("Building...", "ai");
+
+  const res = await fetch(FUNCTION_URL, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ prompt })
+  });
+
+  const data = await res.json();
+
+  addMessage(data.result, "ai");
+
+  loadHistory();
+}
+
+// DARK / LIGHT MODE
+function toggleTheme() {
+  document.body.classList.toggle("light");
+}
+
+// ADMIN PANEL
+function toggleAdmin() {
+  const panel = document.getElementById("adminPanel");
+  panel.style.display = panel.style.display === "block" ? "none" : "block";
+}
+
+loadHistory();
+
+</script>
+
+</body>
+</html>
